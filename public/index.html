@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>🍊 Tangerine</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- Login -->
+<div id="loginBox">
+  <h2>🍊 Tangerine</h2>
+  <input id="usernameInput" placeholder="Your name..." />
+  <button onclick="join()">Join</button>
+</div>
+
+<!-- Chat -->
+<div id="chatBox" style="display:none;">
+  <h2>🍊 Tangerine</h2>
+  <div id="chat"></div>
+  <p id="typing"></p>
+
+  <div id="inputArea">
+    <input id="msg" placeholder="Type..." oninput="typing()" />
+    <button onclick="send()">Send</button>
+  </div>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+  const socket = io();
+  let username = "";
+  let typingTimeout;
+
+  const chat = document.getElementById("chat");
+  const typingEl = document.getElementById("typing");
+
+  function join() {
+    username = usernameInput.value.trim();
+    if (!username) return;
+
+    loginBox.style.display = "none";
+    chatBox.style.display = "block";
+  }
+
+  socket.on("message", data => {
+    const div = document.createElement("div");
+    div.className = "bubble " + (data.username === username ? "me" : "them");
+    div.innerHTML = `<strong>${data.username}</strong><br>${data.message}`;
+    chat.appendChild(div);
+    chat.scrollTop = chat.scrollHeight;
+  });
+
+  function send() {
+    if (!msg.value.trim()) return;
+
+    socket.emit("message", {
+      username,
+      message: msg.value
+    });
+
+    socket.emit("stopTyping");
+    msg.value = "";
+  }
+
+  function typing() {
+    socket.emit("typing", username);
+
+    clearTimeout(typingTimeout);
+    typingTimeout = setTimeout(() => {
+      socket.emit("stopTyping");
+    }, 1000);
+  }
+
+  socket.on("typing", user => {
+    typingEl.textContent = `${user} is typing...`;
+  });
+
+  socket.on("stopTyping", () => {
+    typingEl.textContent = "";
+  });
+</script>
+
+</body>
+</html>
