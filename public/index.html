@@ -17,11 +17,20 @@
 <!-- Chat -->
 <div id="chatBox" style="display:none;">
   <h2>🍊 Tangerine</h2>
+
   <div id="chat"></div>
   <p id="typing"></p>
 
   <div id="inputArea">
-    <input id="msg" placeholder="Type..." oninput="typing()" />
+    <!-- ⬇️ CHANGED TO TEXTAREA -->
+    <textarea
+      id="msg"
+      placeholder="Type a message..."
+      rows="2"
+      oninput="typing()"
+      onkeydown="handleKey(event)"
+    ></textarea>
+
     <button onclick="send()">Send</button>
   </div>
 </div>
@@ -44,22 +53,27 @@
   }
 
   socket.on("message", data => {
-    const div = document.createElement("div");
-    div.className = "bubble " + (data.username === username ? "me" : "them");
-    div.innerHTML = `<strong>${data.username}</strong><br>${data.message}`;
-    chat.appendChild(div);
+    addMessage(data);
+  });
+
+  socket.on("chatHistory", history => {
+    history.forEach(addMessage);
     chat.scrollTop = chat.scrollHeight;
   });
-  socket.on("chatHistory", history => {
-  history.forEach(data => {
+
+  function addMessage(data) {
     const div = document.createElement("div");
     div.className = "bubble " + (data.username === username ? "me" : "them");
-    div.innerHTML = `<strong>${data.username}</strong><br>${data.message}`;
-    chat.appendChild(div);
-  });
-  chat.scrollTop = chat.scrollHeight;
-});
 
+    /* ⬇️ FIX: preserve line breaks */
+    div.innerHTML = `
+      <strong>${data.username}</strong><br>
+      <span class="text">${data.message}</span>
+    `;
+
+    chat.appendChild(div);
+    chat.scrollTop = chat.scrollHeight;
+  }
 
   function send() {
     if (!msg.value.trim()) return;
@@ -71,6 +85,14 @@
 
     socket.emit("stopTyping");
     msg.value = "";
+  }
+
+  /* ⬇️ ENTER TO SEND */
+  function handleKey(e) {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      send();
+    }
   }
 
   function typing() {
